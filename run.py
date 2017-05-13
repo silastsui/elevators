@@ -3,7 +3,6 @@ import ast
 from collections import namedtuple
 import json
 
-import config
 import constants
 
 def get_parameters(filename):
@@ -27,29 +26,41 @@ def get_next_event(event_list, event_time_list, current_time):
 
     return events
 
-def process_elevator_moment(elevator):
+def process_elevator_movement(elevator):
     """Processes elevator movement across one second of time"""
-
-    elevator.next_event_time_left -= 1
+    elevator = elevator._replace(next_event_time_left = elevator.next_event_time_left - 1)
     if elevator.next_event_time_left != 0:
-        return
+        return elevator
 
-    #Continue moving in the direction as before; elevator is moving and hasn't stopped
-    if elevator.next_event_floor == elevator.current_floor: #if elevator reaches floor that it's supposed to stop on
-        elevator.next_event_time = 10
+    if elevator.next_event_floor == elevator.current_floor and not elevator.stopped:
+        elevator = elevator._replace(next_event_time_left = 10)
+        elevator = elevator._replace(stopped = True)
     else: #elevator is moving up or down
-        elevator.current_floor = elevator.next_event_floor
-        elevator.next_event_time = 3
-        if moving_dir > elevator.target_floor - elevator.current_floor:
-            elevator.next_event_floor = elevator.current_floor + 1
-        elif moving_dir < elevator.target_floor - elevator.current_floor:
-            elevator.next_event_floor = elevator.current_floor - 1
+        elevator = elevator._replace(current_floor = elevator.next_event_floor)
+        elevator = elevator._replace(next_event_time_left = 3)
 
-def process_lobby_person_movement(lobby_people):
+    if elevator.target_floor - elevator.current_floor > 0:
+        elevator = elevator._replace(next_event_floor = elevator.current_floor + 1)
+    elif elevator.target_floor - elevator.current_floor < 0:
+        elevator = elevator._replace(next_event_floor = elevator.current_floor - 1)
+
+    return elevator
+
+def process_person_movement(waiting_people):
     "Iterates through a list of people and increments one to their waiting time."
 
-    for person in lobby_people:
-        person.time_waited += 1
+    for person in waiting_people:
+        person = person._replace(time_waited = person.time_waited + 1)
+
+def convert_event_to_person(event):
+    """Converts a event with dictionary type into a person with namedtuple type"""
+    start_floor = event['start']
+    end_floor = event['end']
+    if end_floor - start_floor > 0:
+        direction = "up"
+    else:
+        direction = "down"
+    return _person(start_floor, end_floor, direction, 0, 0)
 
 if __name__ == "__main__":
 
@@ -64,18 +75,18 @@ if __name__ == "__main__":
     elevator_count = data['elevators']
 
     #Initialize elevator variables
-    elevator = namedtuple("elevator", ["direction", "current_floor", "target_floor",
-                                       "next_stopped_floor", "next_event_floor","next_event_time_left"
+    _elevator = namedtuple("elevator", ["direction", "current_floor", "target_floor", "stopped",
+                                       "next_stopped_floor", "next_event_floor","next_event_time_left",
                                        "people_carried", "people_scheduled"])
 
     elevators = []
     for _ in range(elevator_count):
-        elevators.append(elevator("up", 0, 0, 0, 0, False, [], []))
+        elevators.append(_elevator("up", 0, 6, False, 6, 1, 3, [], []))
 
     #Initialize people variables
-    person = namedtuple("person", ["start_floor", "end_floor",
+    _person = namedtuple("person", ["start_floor", "end_floor", "direction",
                                    "time_waited", "waiting_time"])
-    lobby_people = []
+    waiting_people = []
 
     #Initialize event lists
     event_list = data['events']
@@ -88,13 +99,15 @@ if __name__ == "__main__":
         #Get new events
         new_events = get_next_event(event_list, event_time_list, current_time)
         for event in new_events:
-            current_events.append(event)
+            waiting_people.append(convert_event_to_person(event))
 
         #Process new events
         if new_events:
-            process where elevators are going
+            a = "a"
+            #process where elevators are going
 
         #Process waiting time and elevator movement
-        process_lobby_person_movement(lobby_people)
-        for elevator in elevators:
-            process_elevator_movement(elevator)
+        process_person_movement(waiting_people)
+        for elevator in range(len(elevators)):
+            elevators[elevator] = process_elevator_movement(elevators[elevator])
+            process_person_movement(elevators[elevator].people_carried)
