@@ -66,6 +66,96 @@ def convert_event_to_person(event):
     else:
         direction = "down"
     return _person(start_floor, end_floor, direction, 0, 0)
+def calculate_pick_up(elevator,waiting_person):
+    total_time = 0
+    
+
+    for person in elevator.people_carried:
+        total_time += person.waiting_time
+        total_time += get_extra_waiting_time(elevator, person, waiting_person)
+
+    for person in elevator.people_scheduled:
+        total_time += person.waiting_time
+        total_time += get_extra_waiting_time(elevator, , person, waiting_person)
+    
+    total_time += waiting_person.time_waited
+    return total_time
+
+def get_extra_waiting_time(elevator, person, waiting_person):
+    distance = elevator.current_floor - waiting_person.start_floor
+    time = 0
+     #if opposite direction
+    if (distance > 0 and  elevator.direction == "up") or (distance < 0 and elevator.direction == "down"):
+        time = abs(distance) * 6 + 10
+    #else if the person stop exceeds the waiting_person entry point, then add 10
+    else if (person.end_floor > waiting_person.start_floor and elevator.direction == "up") or (person.end_floor < waiting_person.start_floor and elevator.direction == "down"):
+        time = 10
+    #if the waiting person's stop is before the person
+    if (person.end_floor > waiting_person.end_floor and elevator.direction == "up") or (person.end_floor < waiting_person.end_floor and elevator.direction == "down"):
+    return time
+
+def calculate_not_pick_up(elevator, waiting_person):
+    total_time = 0
+    stops = []
+    for person in elevator.people_carried:
+        total_time += person.waiting_time
+        if person.end_floor not in stops:
+            stops.append(person.end_floor)
+
+    for person in elevator.people_scheduled:
+        total_time += person.waiting_time
+        if person.end_floor not in stops:
+            stops.append(person.end_floor)
+
+    total_time += waiting_person.time_waited
+    total_time += len(stops) * 10
+    stops.sort()
+    if elevator.direction == "up":
+        total_time += abs(stops[len(stops)-1] - waiting_person.start_floor) * 3
+    else if elevator.direction == "down":
+        total_time += abs( waiting_person.start_floor - stops[0] ) * 3
+    return total_time
+
+def add_to_elevator(elevators, waiting_person):
+    useElevator = -1
+    total_time_of_pickup_elevator = 10000 * len(elevators)
+    added = False
+    for i, elevator in enumerate(elevators):
+        if elevator.direction == waiting_person.direction:
+            pickup = calculate_pick_up(elevator, waiting_person)
+            not_pickup = calculate_not_pick_up(elevator, waiting_person)
+            total_time = pickup
+            if pickup < not_pickup:
+                for i1, elevator1 in enumerate(elevators):
+                    if i1 != i:
+                        for person in elevator1.people_carried:
+                            total_time += person.waiting_time
+                        for person in elevator1.people_scheduled:
+                            total_time += person.waiting_time
+
+                if total_time_of_pickup_elevator > total_time:
+                    UserElevator = i
+                    total_time_of_pickup_elevator = pickup
+
+    if useElevator >= 0:
+        elevator = elevators[useElevator]
+        waiting_person.waiting_time = 0
+
+        for person in elevator.people_carried:
+            person.waiting_time += get_extra_waiting_time(elevator, person, waiting_person)
+            if (waiting_person.end_floor > person.end_floor and elevator.direction == "up" or waiting_person.end_floor < person.end_floor and elevator.direction == "down"):
+                waiting_person.waiting_time += 10
+        
+        for person in elevator.people_scheduled:
+            person.waiting_time += get_extra_waiting_time(elevator, person, waiting_person)
+            if (waiting_person.end_floor > person.end_floor and elevator.direction == "up" or waiting_person.end_floor < person.end_floor and elevator.direction == "down"):
+                waiting_person.waiting_time += 10
+
+        waiting_person.waiting_time += waiting_person.time_waited + 20
+        elevator.people_scheduled.append(waiting_person)
+        added = True
+    return added
+
 
 def transfer_people_into_elevator(elevator):
     "Transfers people inside elevator to their destination"
@@ -120,17 +210,17 @@ if __name__ == "__main__":
         for event in new_events:
             waiting_people.append(convert_event_to_person(event))
 
-        #Process new events
-        for person in waiting_people:
-            for elevator in range(len(elevators)):
-                a = "A"
-                #calculate the new waiting time if this elevator took it
-            #make calculations about where to assign the person
+        if waiting_people:
+            new_waiting_people = []
+            for person in waiting_people:
+                if not addToElevator(elevators, person):
+                    new_waiting_people.append(person)
+        waiting_people = new_waiting_people
 
-            #Assign people to elevators
-            fastest_elevator = 5
-            elevators[fastest_elevator].people_scheduled.append(person)
-            #process where elevators are going
+        #Assign people to elevators
+        fastest_elevator = 5
+        elevators[fastest_elevator].people_scheduled.append(person)
+        #process where elevators are going
 
         #Process waiting time and elevator movement
         process_person_movement(waiting_people)
