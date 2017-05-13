@@ -266,7 +266,7 @@ if __name__ == "__main__":
             text = ""
             for elevator in elevators:
                 text += "({}, {})".format(elevator.current_floor, len(elevator.people_carried))
-            f.write("{}: {}".format(current_time, text))
+            f.write("{}: {} \n".format(current_time, text))
 
     #Reporting
     print total_waiting_time
