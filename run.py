@@ -32,10 +32,15 @@ def process_elevator_movement(elevator):
     if elevator.next_event_time_left != 0:
         return elevator
 
+    # If elevator is opening and closing its door
     if elevator.next_event_floor == elevator.current_floor and not elevator.stopped:
         elevator = elevator._replace(next_event_time_left = 10)
         elevator = elevator._replace(stopped = True)
-    else: #elevator is moving up or down
+        # Doors are open, so let people enter/exit
+        transfer_people_out_elevator(elevator)
+        transfer_people_into_elevator(elevator)
+    # If elevator is moving up or down a floor
+    else:
         elevator = elevator._replace(current_floor = elevator.next_event_floor)
         elevator = elevator._replace(next_event_time_left = 3)
 
@@ -67,7 +72,7 @@ def calculate_pick_up(elevator,waiting_person):
 
     for person in elevator.people_carried:
         total_time += person.waiting_time
-       total_time += get_extra_waiting_time(elevator, person, waiting_person)
+        total_time += get_extra_waiting_time(elevator, person, waiting_person)
 
     for person in elevator.people_scheduled:
         total_time += person.waiting_time
@@ -111,7 +116,7 @@ def calculate_not_pick_up(elevator, waiting_person):
         total_time += abs( waiting_person.start_floor - stops[0] ) * 3
     return total_time
 
-def addToElevator(elevators, waiting_person){
+def add_to_elevator(elevators, waiting_person):
     useElevator = -1
     total_time_of_pickup_elevator = 10000 * len(elevators)
     added = False
@@ -150,7 +155,21 @@ def addToElevator(elevators, waiting_person){
         elevator.people_scheduled.append(waiting_person)
         added = True
     return added
-}
+
+
+def transfer_people_into_elevator(elevator):
+    "Transfers people inside elevator to their destination"
+    enter_people = [person for person in elevator.scheduled if person['start_floor'] == elevator.current_floor]
+    for person in exit_people:
+        elevator.people_scheduled.remove(person)
+        elevator.people_carried.append(person)
+
+def transfer_people_out_elevator(elevator):
+    "Transfers people from people_scheduled into elevator"
+    exit_people = [person for person in elevator.people_carried if person['end_floor'] == elevator.current_floor]
+    for person in exit_people:
+        elevator.people_carried.remove(person)
+        total_waiting_time += person.time_waited
 
 if __name__ == "__main__":
 
@@ -191,17 +210,21 @@ if __name__ == "__main__":
         for event in new_events:
             waiting_people.append(convert_event_to_person(event))
 
-        #Process waiting people
         if waiting_people:
             new_waiting_people = []
             for person in waiting_people:
-                if not addToElevator():
+                if not addToElevator(elevators, person):
                     new_waiting_people.append(person)
-            a = "a"
-            #process where elevators are going
+        waiting_people = new_waiting_people
+
+        #Assign people to elevators
+        fastest_elevator = 5
+        elevators[fastest_elevator].people_scheduled.append(person)
+        #process where elevators are going
 
         #Process waiting time and elevator movement
         process_person_movement(waiting_people)
         for elevator in range(len(elevators)):
             elevators[elevator] = process_elevator_movement(elevators[elevator])
             process_person_movement(elevators[elevator].people_carried)
+            process_person_movement(elevators[elevator].people_scheduled)
