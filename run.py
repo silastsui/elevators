@@ -27,6 +27,17 @@ def get_next_event(event_list, event_time_list, current_time):
 
     return events
 
+def process_elevator_moment(elevator):
+    """Processes elevator movement across one second of time"""
+
+    if elevator.direction == :
+
+def process_lobby_person_movement(lobby_people):
+    "Iterates through a list of people and increments one to their waiting time."
+
+    for person in lobby_people:
+        person.time_waited += 1
+
 if __name__ == "__main__":
 
     #Process command-line arguments
@@ -34,26 +45,31 @@ if __name__ == "__main__":
     parser.add_argument('filename', type=str, help="relative path of .json file")
     args = parser.parse_args()
 
-    #Process constant variables
+    #Process constant variables from data
     data = get_parameters(args.filename)
-
     floor_count = data['floors']
     elevator_count = data['elevators']
 
+    #Initialize elevator variables
+    elevator = namedtuple("elevator", ["direction", "current_floor", "target_floor"
+                                       "next_event_floor","next_event_time_left", "stopped"
+                                       "people_carried", "people_scheduled"])
+
+    elevators = []
+    for _ in range(elevator_count):
+        elevators.append(elevator("up", 0, 0, 0, 0, False, [], []))
+
+    #Initialize people variables
+    person = namedtuple("person", ["start_floor", "end_floor",
+                                   "time_waited", "waiting_time"])
+    lobby_people = []
+
+    #Initialize event lists
     event_list = data['events']
     event_time_list = [event['time'] for event in event_list]
     current_events = []
 
-    elevator = namedtuple("elevator", ["direction_up", "current_floor",
-                                       "next_event_floor","next_event_time_left",
-                                       "people"])
-
-    elevators = []
-    for _ in range(elevator_count):
-        elevators.append(elevator(True, 0, 0, 0, []))
-
     total_waiting_time = 0
-
     #Program Main Loop
     for current_time in range(constants.max_time):
         #Get new events
@@ -64,6 +80,7 @@ if __name__ == "__main__":
         #Process new events
         if new_events:
 
+
             process where elevators are going
 
-        # for elevator in elevators
+        for elevator in elevators:
