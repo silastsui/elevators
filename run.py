@@ -30,7 +30,20 @@ def get_next_event(event_list, event_time_list, current_time):
 def process_elevator_moment(elevator):
     """Processes elevator movement across one second of time"""
 
-    if elevator.direction == :
+    elevator.next_event_time_left -= 1
+    if elevator.next_event_time_left != 0:
+        return
+
+    #Continue moving in the direction as before; elevator is moving and hasn't stopped
+    if elevator.next_event_floor == elevator.current_floor: #if elevator reaches floor that it's supposed to stop on
+        elevator.next_event_time = 10
+    else: #elevator is moving up or down
+        elevator.current_floor = elevator.next_event_floor
+        elevator.next_event_time = 3
+        if moving_dir > elevator.target_floor - elevator.current_floor:
+            elevator.next_event_floor = elevator.current_floor + 1
+        elif moving_dir < elevator.target_floor - elevator.current_floor:
+            elevator.next_event_floor = elevator.current_floor - 1
 
 def process_lobby_person_movement(lobby_people):
     "Iterates through a list of people and increments one to their waiting time."
@@ -51,8 +64,8 @@ if __name__ == "__main__":
     elevator_count = data['elevators']
 
     #Initialize elevator variables
-    elevator = namedtuple("elevator", ["direction", "current_floor", "target_floor"
-                                       "next_event_floor","next_event_time_left", "stopped"
+    elevator = namedtuple("elevator", ["direction", "current_floor", "target_floor",
+                                       "next_stopped_floor", "next_event_floor","next_event_time_left"
                                        "people_carried", "people_scheduled"])
 
     elevators = []
@@ -79,8 +92,9 @@ if __name__ == "__main__":
 
         #Process new events
         if new_events:
-
-
             process where elevators are going
 
+        #Process waiting time and elevator movement
+        process_lobby_person_movement(lobby_people)
         for elevator in elevators:
+            process_elevator_movement(elevator)
