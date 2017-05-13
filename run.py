@@ -39,6 +39,9 @@ def process_elevator_movement(elevator):
         # Doors are open, so let people enter/exit
         transfer_people_out_elevator(elevator)
         transfer_people_into_elevator(elevator)
+
+        if (len(elevator.people_carried) + len(elevator.people_scheduled)) == 0:
+            elevator = elevator._replace(direction="stop")
     # If elevator is moving up or down a floor
     else:
         elevator = elevator._replace(stopped = False)
@@ -71,7 +74,6 @@ def convert_event_to_person(event):
 
 def calculate_pick_up(elevator,waiting_person):
     total_time = 0
-
 
     for person in elevator.people_carried:
         total_time += person.waiting_time
@@ -115,8 +117,7 @@ def calculate_not_pick_up(elevator, waiting_person):
     total_time += waiting_person.time_waited
 
     total_time += len(stops) * 10
-    if stops == []:
-        return
+    
     if elevator.direction == "up":
         total_time += abs(max(stops) - waiting_person.start_floor) * 3
     elif elevator.direction == "down":
@@ -128,14 +129,14 @@ def add_to_elevator(elevators, waiting_person):
     total_time_of_pickup_elevator = 10000 * len(elevators)
     added = False
     for i, elevator in enumerate(elevators):
-        #If the direction is the same and the elevator has less than 5 ppl
+        
         total_time = total_time_of_pickup_elevator
         if elevator.direction == "stop":
             total_time = (elevator.current_floor - waiting_person.start_floor)*3 + 10
             if total_time_of_pickup_elevator > total_time:
                 use_elevator = i
                 total_time_of_pickup_elevator = total_time
-
+        #If the direction is the same and the elevator has less than 5 ppl
         elif elevator.direction == waiting_person.direction and len(elevator.people_carried)+len(elevator.people_scheduled) < 5:
             pickup = calculate_pick_up(elevator, waiting_person)
             not_pickup = calculate_not_pick_up(elevator, waiting_person)
@@ -171,7 +172,7 @@ def add_to_elevator(elevators, waiting_person):
             if (waiting_person.end_floor > person.end_floor and elevator.direction == "up" or waiting_person.end_floor < person.end_floor and elevator.direction == "down"):
                 waiting_person = waiting_person._replace(waiting_time = waiting_person.waiting_time + 10)
 
-        waiting_person = waiting_person._replace(waiting_time = waiting_person.time_waited + 20)
+        waiting_person = waiting_person._replace(waiting_time = waiting_person.time_waited + 10)
         elevator = elevator._replace(people_scheduled = elevator.people_scheduled.append(waiting_person))
         added = True
     return added
@@ -190,6 +191,7 @@ def transfer_people_out_elevator(elevator):
     for person in exit_people:
         elevator.people_carried.remove(person)
         total_waiting_time += person.time_waited
+
     return total_waiting_time
 
 if __name__ == "__main__":
@@ -244,15 +246,13 @@ if __name__ == "__main__":
         for elevator in range(len(elevators)):
             destinations = [people.end_floor for people in elevators[elevator].people_carried]
             destinations += [people.start_floor for people in elevators[elevator].people_scheduled]
-            if destinations == []:
-                # next_floor = elevators[elevator].current_floor
-                elevators[elevator] = elevators[elevator]._replace(direction="stop")
-            elif elevators[elevator].direction == "up":
-                next_floor = min(destinations)
-                elevators[elevator] = elevators[elevator]._replace(next_stopped_floor=next_floor)
-            else:
-                next_floor = max(destinations)
-                elevators[elevator] = elevators[elevator]._replace(next_stopped_floor=next_floor)
+            if destinations != []:
+                if elevators[elevator].direction == "up":
+                    next_floor = min(destinations)
+                    elevators[elevator] = elevators[elevator]._replace(next_stopped_floor=next_floor)
+                else:
+                    next_floor = max(destinations)
+                    elevators[elevator] = elevators[elevator]._replace(next_stopped_floor=next_floor)
 
 
         #Process waiting time and elevator movement
