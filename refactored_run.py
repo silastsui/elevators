@@ -4,27 +4,22 @@ from collections import namedtuple
 import json
 
 import constants
+from elevator import Direction, Elevator
+from passenger import Passenger
 
-def get_parameters(filename):
-    """Parses through a .json file and returns the data
-    as a dictionary. This function assumes the .json file is valid."""
-
-    with open(filename) as f:
-        elev = ast.literal_eval(f.read())
-    return elev
-
-def get_next_event(event_list, event_time_list, current_time):
+def get_next_events(events, event_times, current_time):
     """Gets the next event(s) in the JSON file at the specified
     time and returns them."""
-    event_num = event_time_list.count(current_time)
-    events = []
-    for event in range(event_num):
-        events.append(event_list[event])
-    for event in range(event_num):
-        event_list.pop(0)
-        event_time_list.pop(0)
+    if event_times == []:
+        return []
 
-    return events
+    curr_events = []
+    while event_times[0] == current_time:
+        curr_events.append(events[0])
+        events.pop(0)
+        event_times.pop(0)
+
+    return curr_events
 
 def process_elevator_movement(elevator):
     """Processes elevator movement across one second of time"""
@@ -60,7 +55,6 @@ def process_person_movement(waiting_people):
 
     for person in range(len(waiting_people)):
         waiting_people[person] = waiting_people[person]._replace(time_waited=waiting_people[person].time_waited + 1)
-
 
 def convert_event_to_person(event):
     """Converts a event with dictionary type into a person with namedtuple type"""
@@ -200,39 +194,26 @@ if __name__ == "__main__":
     parser.add_argument('filename', type=str, help="relative path of .json file")
     args = parser.parse_args()
 
-    #Process constant variables from data
-    data = get_parameters(args.filename)
+    with open(constants.TEST_CASES + args.filename) as f:
+        data = json.loads((f.read()))
+
     floor_count = data['floors']
     elevator_count = data['elevators']
+    events = data['events']
+    event_times = [event['time'] for event in events]
 
-    #Initialize elevator variables
-    _elevator = namedtuple("elevator", ["direction", "current_floor", "target_floor", "stopped",
-                                       "next_stopped_floor", "next_event_floor","next_event_time_left",
-                                       "people_carried", "people_scheduled"])
-
+    passengers = []
     elevators = []
-    for _ in range(elevator_count):
-        elevators.append(_elevator("up", 0, 0, False, 1, 0, 3, [], []))
 
-    #Initialize people variables
-    _person = namedtuple("person", ["start_floor", "end_floor", "direction",
-                                   "time_waited", "waiting_time"])
-    waiting_people = []
+    for elevator in range(elevator_count):
+        elevators.append(Elevator())
 
-    #Initialize event lists
-    event_list = data['events']
-    event_time_list = [event['time'] for event in event_list]
-    current_events = []
-
-    #Program Main Loop
-    global total_waiting_time
+    #Program main loop
     total_waiting_time = 0
-    for current_time in range(constants.max_time):
-        # print elevators
-        #Get new events
-        new_events = get_next_event(event_list, event_time_list, current_time)
-        for event in new_events:
-            waiting_people.append(convert_event_to_person(event))
+    for time in range(constants.END_TIME):
+        # Get new passengers
+        for event in get_next_events(events, event_times, time):
+            passengers.append(Passenger(event['start'], event['end'], event['time']))
 
         #Assign new people to elevator or keep them in waiting_people
         if waiting_people:
@@ -262,11 +243,12 @@ if __name__ == "__main__":
             process_person_movement(elevators[elevator].people_carried)
             process_person_movement(elevators[elevator].people_scheduled)
 
+        # Log elevator statuses
         with open("output.txt", "a") as f:
             text = ""
             for elevator in elevators:
-                text += "({}, {})".format(elevator.current_floor, len(elevator.people_carried))
+                text += "({}, {}) ".format(elevator.current_floor, len(elevator.passengers))
             f.write("{}: {} \n".format(current_time, text))
 
     #Reporting
-    print total_waiting_time
+    print(total_waiting_time)

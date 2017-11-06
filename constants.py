@@ -1,3 +1,9 @@
-#Time Constants
-start_time = 0
-max_time = 1000
+START_TIME = 0
+END_TIME = 1000
+
+FLOOR_CHANGE = 3
+DOOR_OPEN = 10
+
+ELEVATOR_SIZE = 5
+
+TEST_CASES = 'TEST_CASES/'
